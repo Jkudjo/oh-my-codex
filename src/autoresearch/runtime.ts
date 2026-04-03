@@ -130,6 +130,7 @@ interface AutoresearchInstructionLedgerSummary {
 
 const AUTORESEARCH_RESULTS_HEADER = 'iteration\tcommit\tpass\tscore\tstatus\tdescription\n';
 const AUTORESEARCH_WORKTREE_EXCLUDES = ['results.tsv', 'run.log', 'node_modules', '.omx/'];
+const EVALUATOR_SHELL_META_PATTERN = /[|&;<>()$`\\]/;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -154,6 +155,23 @@ function activeRunStateFile(projectRoot: string): string {
 function trimContent(value: string, max = 4000): string {
   const trimmed = value.trim();
   return trimmed.length <= max ? trimmed : `${trimmed.slice(0, max)}\n...`;
+}
+
+function tokenizeEvaluatorCommand(commandText: string): string[] | undefined {
+  const trimmed = commandText.trim();
+  if (!trimmed || EVALUATOR_SHELL_META_PATTERN.test(trimmed)) return undefined;
+
+  const tokens = trimmed.match(/"[^"]*"|'[^']*'|\S+/g);
+  if (!tokens) return undefined;
+  return tokens.map((token) => {
+    if (
+      (token.startsWith('"') && token.endsWith('"'))
+      || (token.startsWith("'") && token.endsWith("'"))
+    ) {
+      return token.slice(1, -1);
+    }
+    return token;
+  });
 }
 
 function readGit(repoPath: string, args: string[]): string {
@@ -472,49 +490,61 @@ export async function runAutoresearchEvaluator(
   latestEvaluatorFile?: string,
 ): Promise<AutoresearchEvaluationRecord> {
   const ran_at = nowIso();
-  const result = spawnSync(contract.sandbox.evaluator.command, {
-    cwd: worktreePath,
-    encoding: 'utf-8',
-    shell: true,
-    maxBuffer: 1024 * 1024,
-      windowsHide: true,
-    });
-  const stdout = result.stdout?.trim() || '';
-  const stderr = result.stderr?.trim() || '';
+  const evaluatorArgv = tokenizeEvaluatorCommand(contract.sandbox.evaluator.command);
 
   let record: AutoresearchEvaluationRecord;
-  if (result.error || result.status !== 0) {
+  if (!evaluatorArgv || evaluatorArgv.length === 0) {
     record = {
       command: contract.sandbox.evaluator.command,
       ran_at,
       status: 'error',
-      exit_code: result.status,
-      stdout,
-      stderr: result.error ? [stderr, result.error.message].filter(Boolean).join('\n') : stderr,
+      exit_code: null,
+      stdout: '',
+      stderr: 'autoresearch evaluator command must be a direct argv command without shell metacharacters',
     };
   } else {
-    try {
-      const parsed = parseEvaluatorResult(stdout);
-      record = {
-        command: contract.sandbox.evaluator.command,
-        ran_at,
-        status: parsed.pass ? 'pass' : 'fail',
-        pass: parsed.pass,
-        ...(parsed.score !== undefined ? { score: parsed.score } : {}),
-        exit_code: result.status,
-        stdout,
-        stderr,
-      };
-    } catch (error) {
+    const result = spawnSync(evaluatorArgv[0], evaluatorArgv.slice(1), {
+    cwd: worktreePath,
+    encoding: 'utf-8',
+    maxBuffer: 1024 * 1024,
+    windowsHide: true,
+    });
+    const stdout = result.stdout?.trim() || '';
+    const stderr = result.stderr?.trim() || '';
+
+    if (result.error || result.status !== 0) {
       record = {
         command: contract.sandbox.evaluator.command,
         ran_at,
         status: 'error',
         exit_code: result.status,
         stdout,
-        stderr,
-        parse_error: error instanceof Error ? error.message : String(error),
+        stderr: result.error ? [stderr, result.error.message].filter(Boolean).join('\n') : stderr,
       };
+    } else {
+      try {
+        const parsed = parseEvaluatorResult(stdout);
+        record = {
+          command: contract.sandbox.evaluator.command,
+          ran_at,
+          status: parsed.pass ? 'pass' : 'fail',
+          pass: parsed.pass,
+          ...(parsed.score !== undefined ? { score: parsed.score } : {}),
+          exit_code: result.status,
+          stdout,
+          stderr,
+        };
+      } catch (error) {
+        record = {
+          command: contract.sandbox.evaluator.command,
+          ran_at,
+          status: 'error',
+          exit_code: result.status,
+          stdout,
+          stderr,
+          parse_error: error instanceof Error ? error.message : String(error),
+        };
+      }
     }
   }
 
