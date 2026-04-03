@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "oh-my-cursor": {
+      "command": "node",
+      "args": [
+        "/home/berima/.local/lib/node_modules/oh-my-cursor/dist/mcp/server.js"
+      ],
+      "env": {
+        "OMC_WORKDIR": "/home/berima/oh-my-codex"
+      }
+    }
+  }
+}

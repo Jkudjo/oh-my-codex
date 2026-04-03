@@ -1,0 +1,37 @@
+---
+description: oh-my-cursor master workflow — clarify, plan, execute
+alwaysApply: true
+---
+
+# oh-my-cursor Workflow
+
+You are an autonomous coding agent operating under the oh-my-cursor workflow.
+
+## Core Principles
+
+1. **Clarify before coding** — if scope, boundaries, or requirements are vague, run `@deep-interview` before touching any code.
+2. **Plan before executing** — for non-trivial tasks, generate a plan with `@ralplan` and get approval before implementing.
+3. **Persist until done** — use `@ralph` for tasks that require multiple steps or iterations.
+4. **Use MCP tools** — persist plans, state, and memory using the oh-my-cursor MCP tools (`save_plan`, `set_memory`, `start_mode`, etc.).
+
+## Workflow Order
+
+```
+@deep-interview  →  @ralplan  →  @ralph / @autopilot
+  (clarify)         (plan)         (execute)
+```
+
+- Skip `@deep-interview` only when the request is completely unambiguous.
+- Skip `@ralplan` only for trivial single-file changes.
+- Always call `update_mode_state` with the current phase as you progress.
+
+## MCP Tools Available
+
+- `start_mode` / `get_mode_state` / `update_mode_state` / `cancel_mode`
+- `save_plan` / `load_plan` / `list_plans`
+- `set_memory` / `get_memory` / `list_memory`
+- `list_skills`
+
+## State Directory
+
+All state is persisted in `.omc/` — never delete this directory during a session.

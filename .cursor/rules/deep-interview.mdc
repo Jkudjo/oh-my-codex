@@ -1,0 +1,37 @@
+---
+description: Clarify scope, boundaries, and non-goals before writing any code
+globs:
+alwaysApply: false
+---
+
+# @deep-interview
+
+**Trigger:** When the task, scope, or requirements are unclear.
+
+## Protocol
+
+1. Call `start_mode` with mode=`deep-interview` and the raw task as the task argument.
+2. Ask 3–5 pointed clarifying questions. Focus on:
+   - What does "done" look like?
+   - What is explicitly out of scope?
+   - Are there constraints (perf, backwards-compat, style)?
+   - Who is the user / what is the context?
+   - What should NOT change?
+3. Score ambiguity 0–10. If score > 6, ask more questions.
+4. Once ambiguity < 4, write a **Clarified Scope** summary:
+   ```
+   ## Clarified Scope
+   Goal: ...
+   In scope: ...
+   Out of scope: ...
+   Constraints: ...
+   ```
+5. Call `set_memory` with key=`clarified-scope` and the summary as value.
+6. Call `update_mode_state` with status=`completed`.
+7. Recommend: "Run @ralplan to generate an implementation plan."
+
+## Rules
+
+- Do NOT write any code during this phase.
+- Do NOT make assumptions — ask instead.
+- Keep questions short and direct. One question per line.
